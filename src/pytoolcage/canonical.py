@@ -4,7 +4,57 @@ from __future__ import annotations
 import hashlib
 import json
 import math
-from typing import Any, Set
+from typing import Any, Dict, Set
+
+MAX_JSON_GRAPH_DEPTH = 128
+
+
+def analyze_json_graph(value: Any, maximum_depth: int = MAX_JSON_GRAPH_DEPTH) -> Dict[str, Any]:
+    """Inspect object-graph shape iteratively before recursive canonical code runs."""
+    seen = set()
+    active = set()
+    depth = 0
+    stack = [(value, 0, True)]
+    while stack:
+        node, current_depth, enter = stack.pop()
+        if not isinstance(node, (list, dict)):
+            if current_depth > maximum_depth:
+                return {"ok": False, "reason": "depth", "depth": current_depth}
+            depth = max(depth, current_depth)
+            continue
+        if not enter:
+            active.discard(id(node))
+            continue
+        ident = id(node)
+        if ident in active:
+            return {"ok": False, "reason": "cyclic", "depth": current_depth}
+        if ident in seen:
+            return {"ok": False, "reason": "shared", "depth": current_depth}
+        if current_depth > maximum_depth:
+            return {"ok": False, "reason": "depth", "depth": current_depth}
+        seen.add(ident)
+        active.add(ident)
+        depth = max(depth, current_depth)
+        stack.append((node, current_depth, False))
+        children = node if isinstance(node, list) else node.values()
+        for child in children:
+            stack.append((child, current_depth + 1, True))
+    return {"ok": True, "depth": depth}
+
+
+def _graph_error(reason: str) -> TypeError:
+    if reason == "cyclic":
+        return TypeError("cyclic value cannot be canonicalized")
+    if reason == "shared":
+        return TypeError("shared object references cannot be canonicalized safely")
+    return TypeError("json value exceeds maximum safe structural depth %s" % MAX_JSON_GRAPH_DEPTH)
+
+
+def _assert_safe_graph(value: Any) -> Dict[str, Any]:
+    graph = analyze_json_graph(value)
+    if not graph["ok"]:
+        raise _graph_error(graph["reason"])
+    return graph
 
 
 def _check_json_value(value: Any, seen: Set[int]) -> None:
@@ -44,6 +94,7 @@ def _check_json_value(value: Any, seen: Set[int]) -> None:
 
 def stable_stringify(value: Any) -> str:
     """Return deterministic JSON with sorted keys and no insignificant whitespace."""
+    _assert_safe_graph(value)
     _check_json_value(value, set())
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False)
 
@@ -65,22 +116,4 @@ def measured_json_bytes(value: Any) -> int:
 
 
 def max_depth_of(value: Any) -> int:
-    seen = set()
-
-    def visit(node: Any, depth: int) -> int:
-        if not isinstance(node, (list, dict)) or type(node) is not dict and not isinstance(node, list):
-            return depth
-        ident = id(node)
-        if ident in seen:
-            raise TypeError("cyclic value has no finite depth")
-        seen.add(ident)
-        try:
-            best = depth
-            children = node if isinstance(node, list) else node.values()
-            for child in children:
-                best = max(best, visit(child, depth + 1))
-            return best
-        finally:
-            seen.remove(ident)
-
-    return visit(value, 0)
+    return int(_assert_safe_graph(value)["depth"])

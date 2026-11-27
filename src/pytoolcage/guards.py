@@ -111,11 +111,11 @@ def _percent_decode_repeated(value: str) -> str:
 
 def guard_path(value: str, spec: Dict[str, object], path: str = "$") -> List[Dict[str, str]]:
     errors = []
-    if _CONTROL_RE.search(value) or _CONTROL_PERCENT_RE.search(value):
+    decoded = _percent_decode_repeated(value).replace("\\", "/")
+    if _CONTROL_RE.search(value) or _CONTROL_PERCENT_RE.search(value) or _CONTROL_RE.search(decoded):
         errors.append(_err("CONTROL_CHARACTER", "path contains a control character", path))
     if "\x00" in value:
         errors.append(_err("NULL_BYTE", "path contains a null byte", path))
-    decoded = _percent_decode_repeated(value).replace("\\", "/")
     if "\x00" in decoded:
         errors.append(_err("NULL_BYTE", "encoded path contains a null byte", path))
     if _WINDOWS_DRIVE_RE.match(decoded) or decoded.startswith("/") or decoded.startswith("//"):

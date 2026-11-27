@@ -5,7 +5,7 @@ import math
 import re
 from typing import Any, Dict, List, Set
 
-from .canonical import max_depth_of, measured_json_bytes
+from .canonical import analyze_json_graph, measured_json_bytes
 
 REDACTED_SECRET = "[REDACTED_SECRET]"
 REDACTED_BLOCK = "[REDACTED_PRIVATE_KEY_BLOCK]"
@@ -43,7 +43,7 @@ def _normalize_key(key: str) -> str:
 def _hidden_codepoint(cp: int) -> bool:
     return (
         0x202A <= cp <= 0x202E or 0x2066 <= cp <= 0x2069 or 0x200B <= cp <= 0x200F
-        or 0x2060 <= cp <= 0x2064 or cp in (0x180E, 0xFEFF, 0x00AD)
+        or 0x2060 <= cp <= 0x2064 or cp in (0x180E, 0x061C, 0xFEFF, 0x00AD)
         or 0xE0000 <= cp <= 0xE007F or 0x0000 <= cp <= 0x0008 or cp in (0x000B, 0x000C)
         or 0x000E <= cp <= 0x001F or 0x007F <= cp <= 0x009F
     )
@@ -176,12 +176,20 @@ def sanitize_tool_result(result: Any, options: Dict[str, Any] = None) -> Dict[st
     findings: List[Dict[str, str]] = []
     removed_hidden = 0
     redacted_secrets = 0
+    graph = analyze_json_graph(result)
+    if not graph["ok"]:
+        if graph["reason"] == "depth":
+            findings.append({"code": "RESULT_TOO_DEEP", "path": "$", "message": "result exceeds the maximum safe structural depth"})
+        else:
+            message = "shared object references are not valid JSON results" if graph["reason"] == "shared" else "cyclic result value"
+            findings.append({"code": "RESULT_NOT_JSON", "path": "$", "message": message})
+        return {"action": "blocked", "ok": False, "value": None, "findings": findings, "removedHidden": 0, "redactedSecrets": 0, "bytes": 0}
     if not _structure_ok(result):
         findings.append({"code": "RESULT_NOT_JSON", "path": "$", "message": "result must be finite JSON-compatible data"})
         return {"action": "blocked", "ok": False, "value": None, "findings": findings, "removedHidden": 0, "redactedSecrets": 0, "bytes": 0}
     try:
         input_bytes = measured_json_bytes(result)
-        input_depth = max_depth_of(result)
+        input_depth = int(graph["depth"])
     except (TypeError, ValueError):
         findings.append({"code": "RESULT_NOT_JSON", "path": "$", "message": "result must be finite JSON-compatible data"})
         return {"action": "blocked", "ok": False, "value": None, "findings": findings, "removedHidden": 0, "redactedSecrets": 0, "bytes": 0}

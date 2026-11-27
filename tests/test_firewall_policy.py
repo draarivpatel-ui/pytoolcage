@@ -379,6 +379,13 @@ class TestPolicyBehavior(unittest.TestCase):
         self.assertEqual(audit["summary"]["tools"], 1)
         self.assertEqual(audit["summary"]["parameters"], 1)
 
+    def test_nonfinite_numeric_bounds_are_invalid_policy(self):
+        for key in ("min", "max", "multipleOf"):
+            policy = policy_with_tool({"parameters": {"x": {"type": "number", key: float("nan")}}})
+            audit = audit_policy(policy)
+            self.assertFalse(audit["ok"])
+            self.assertIn("POLICY_NUMBER_INVALID", [item["code"] for item in audit["errors"]])
+
 
 if __name__ == "__main__":
     unittest.main()

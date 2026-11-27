@@ -5,7 +5,7 @@ import math
 import re
 from typing import Any, Dict, List, Set
 
-from .canonical import max_depth_of, measured_json_bytes, stable_stringify, utf8_bytes
+from .canonical import analyze_json_graph, measured_json_bytes, stable_stringify, utf8_bytes
 from .errors import failure
 from .guards import guard_value_by_kind
 
@@ -73,12 +73,21 @@ def inspect_tool_arguments(args: Any) -> Dict[str, Any]:
     if type(args) is not dict:
         _error(errors, "ARGUMENTS_NOT_OBJECT", "tool arguments must be a plain dictionary", "$")
         return {"ok": False, "errors": errors}
+    graph = analyze_json_graph(args)
+    if not graph["ok"]:
+        if graph["reason"] == "depth":
+            _error(errors, "DEPTH_EXCEEDED", "arguments exceed the maximum safe structural depth", "$")
+        elif graph["reason"] == "shared":
+            _error(errors, "SHARED_REFERENCE", "shared object references are not valid tool arguments", "$")
+        else:
+            _error(errors, "CYCLIC_ARGUMENT", "cyclic values are not valid tool arguments", "$")
+        return {"ok": False, "errors": errors}
     _scan_json_like(args, "$", errors, set())
     if errors:
         return {"ok": False, "errors": errors}
     try:
         byte_count = measured_json_bytes(args)
-        depth = max(0, max_depth_of(args) - 1)
+        depth = max(0, int(graph["depth"]) - 1)
     except (TypeError, ValueError) as caught:
         _error(errors, "MEASUREMENT_FAILED", str(caught), "$")
         return {"ok": False, "errors": errors}
@@ -194,13 +203,13 @@ def _validate_value(value: Any, spec: Any, path: str, errors: List[Dict[str, str
     if not isinstance(spec, dict):
         _error(errors, "INVALID_POLICY", "parameter specification must be an object", path)
         return
-    if value is None:
-        if "enum" in spec or spec.get("type") == "null" or spec.get("nullable") is True:
-            return
-        _error(errors, "TYPE_MISMATCH", "expected " + str(spec.get("type")), path)
-        return
     if "enum" in spec and not _enum_contains(spec.get("enum"), value):
         _error(errors, "ENUM_MISMATCH", "value is not one of the allowed values", path)
+        return
+    if value is None:
+        if spec.get("type") == "null" or spec.get("nullable") is True or "enum" in spec:
+            return
+        _error(errors, "TYPE_MISMATCH", "expected " + str(spec.get("type")), path)
         return
     if isinstance(spec.get("maxDepth"), int) and depth > spec["maxDepth"]:
         _error(errors, "DEPTH_EXCEEDED", "value exceeds maximum depth %s" % spec["maxDepth"], path)

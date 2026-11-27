@@ -6,6 +6,7 @@ import sys
 from typing import Any, Dict, List
 
 from . import VERSION
+from .errors import ToolCageError
 from .policy import audit_policy
 from .firewall import create_firewall
 from .sanitizer import sanitize_tool_result
@@ -113,7 +114,7 @@ def main(argv: List[str] = None) -> int:
                 print(json.dumps(result["value"], sort_keys=True))
             return 0 if result["ok"] else 1
         raise ValueError("unknown command " + command)
-    except (ValueError, json.JSONDecodeError) as caught:
+    except (ValueError, json.JSONDecodeError, ToolCageError) as caught:
         print("pytoolcage: " + str(caught), file=sys.stderr)
         print(_usage(), file=sys.stderr)
         return 2

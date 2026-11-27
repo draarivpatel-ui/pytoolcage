@@ -194,6 +194,19 @@ class TestSchemaSingles(unittest.TestCase):
     def test_null_nullable(self):
         self.assertTrue(validate({"value": None}, {"value": {"type": "string", "nullable": True}})["ok"])
 
+    def test_null_not_in_enum_is_rejected(self):
+        result = validate({"value": None}, {"value": {"type": "any", "enum": [1, 2]}})
+        expect_code(self, result, "ENUM_MISMATCH")
+
+    def test_shared_reference_rejected(self):
+        shared = {"nested": "x"}
+        result = inspect_tool_arguments({"first": shared, "second": shared})
+        expect_code(self, result, "SHARED_REFERENCE")
+
+    def test_extreme_nesting_fails_closed(self):
+        result = validate({"value": make_depth("x", 500)}, {"value": {"type": "any"}}, {"maxDepth": 1000})
+        expect_code(self, result, "DEPTH_EXCEEDED")
+
     def test_cycle_rejected(self):
         value = {}
         value["self"] = value

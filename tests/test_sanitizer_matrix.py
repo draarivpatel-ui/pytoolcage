@@ -8,7 +8,7 @@ class TestSanitizer(unittest.TestCase):
     pass
 
 
-hidden = [0x202A, 0x202B, 0x202C, 0x202D, 0x202E, 0x2066, 0x2067, 0x2068, 0x2069, 0x200B, 0x200C, 0x200D, 0x200E, 0x200F, 0x2060, 0x2061, 0x2062, 0x2063, 0x2064, 0x180E, 0xFEFF, 0x00AD, 0xE0001, 0xE0020, 0xE007F, 0x0000, 0x0001, 0x0008, 0x000B, 0x000C, 0x000E, 0x001F, 0x007F, 0x0080, 0x009F]
+hidden = [0x202A, 0x202B, 0x202C, 0x202D, 0x202E, 0x2066, 0x2067, 0x2068, 0x2069, 0x200B, 0x200C, 0x200D, 0x200E, 0x200F, 0x2060, 0x2061, 0x2062, 0x2063, 0x2064, 0x180E, 0x061C, 0xFEFF, 0x00AD, 0xE0001, 0xE0020, 0xE007F, 0x0000, 0x0001, 0x0008, 0x000B, 0x000C, 0x000E, 0x001F, 0x007F, 0x0080, 0x009F]
 for cp in hidden:
     def check(self, cp=cp):
         result = sanitize_tool_result("safe" + chr(cp) + "text")
@@ -152,6 +152,20 @@ class TestSanitizerSingles(unittest.TestCase):
         value = {}
         value["self"] = value
         self.assertEqual(sanitize_tool_result(value)["action"], "blocked")
+
+    def test_shared_reference_blocked(self):
+        shared = {"nested": "x"}
+        result = sanitize_tool_result({"first": shared, "second": shared})
+        self.assertEqual(result["action"], "blocked")
+        self.assertIn("RESULT_NOT_JSON", [item["code"] for item in result["findings"]])
+
+    def test_extreme_nesting_fails_closed(self):
+        value = "x"
+        for _ in range(500):
+            value = {"child": value}
+        result = sanitize_tool_result(value, {"maxDepth": 1000})
+        self.assertEqual(result["action"], "blocked")
+        self.assertIn("RESULT_TOO_DEEP", [item["code"] for item in result["findings"]])
 
     def test_size_blocked(self):
         self.assertEqual(sanitize_tool_result({"x": "a" * 200}, {"maxBytes": 100})["action"], "blocked")

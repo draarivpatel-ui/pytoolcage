@@ -1,5 +1,7 @@
 # pytoolcage
 
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/draarivpatel-ui/pytoolcage/badge)](https://scorecard.dev/viewer/?uri=github.com/draarivpatel-ui/pytoolcage)
+
 Zero-dependency AI-agent and MCP tool-call security firewall for Python 3.9 through 3.13.
 
 `pytoolcage` sits between a model and real tools. It validates tool names and arguments before execution, blocks dangerous command, path and URL inputs, enforces capability budgets, stops duplicate runaway loops, writes a tamper-evident audit trail, and sanitizes untrusted tool output before the output goes back to a model.

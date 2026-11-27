@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import copy
+import math
 import re
 from typing import Any, Dict, List
 
@@ -88,7 +89,7 @@ def _validate_param_spec(spec: Any, path: str, errors: List[Dict[str, str]], war
         if key in spec and not _positive_int(spec[key]):
             errors.append(_issue("error", "POLICY_NUMBER_INVALID", key + " must be a nonnegative integer", path + "." + key))
     for key in ("min", "max", "multipleOf"):
-        if key in spec and (not isinstance(spec[key], (int, float)) or isinstance(spec[key], bool)):
+        if key in spec and (not isinstance(spec[key], (int, float)) or isinstance(spec[key], bool) or not math.isfinite(spec[key])):
             errors.append(_issue("error", "POLICY_NUMBER_INVALID", key + " must be finite", path + "." + key))
     if isinstance(spec.get("minLength"), int) and isinstance(spec.get("maxLength"), int) and spec["minLength"] > spec["maxLength"]:
         errors.append(_issue("error", "POLICY_RANGE_INVALID", "minLength exceeds maxLength", path))

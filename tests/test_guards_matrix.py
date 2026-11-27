@@ -63,6 +63,7 @@ hostile_paths = [
     ("forward_drive", "C:/Windows/system32", "ABSOLUTE_PATH"), ("home", "~/secret", "HOME_EXPANSION"),
     ("nul", "safe\x00secret", "CONTROL_CHARACTER"), ("newline", "safe\nsecret", "CONTROL_CHARACTER"),
     ("encoded_newline", "safe%0asecret", "CONTROL_CHARACTER"), ("encoded_nul", "safe%00secret", "CONTROL_CHARACTER"),
+    ("double_encoded_newline", "safe%250asecret", "CONTROL_CHARACTER"), ("triple_encoded_nul", "safe%252500secret", "CONTROL_CHARACTER"),
     ("bidi", "safe%u202esecret", "PATH_OBFUSCATION"),
 ]
 for name, value, code in hostile_paths:
