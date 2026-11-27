@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Run unit tests
+        run: PYTHONPATH=src python3 -m unittest discover -s tests
+      - name: Run CLI smoke tests
+        run: |
+          printf '{"version":1,"tools":{"read_file":{"parameters":{"path":{"type":"path","required":true}}}}}' > /tmp/pytoolcage-policy.json
+          printf '{"path":"safe.txt"}' > /tmp/pytoolcage-args.json
+          PYTHONPATH=src python3 -m pytoolcage audit-policy --policy /tmp/pytoolcage-policy.json --json
+          PYTHONPATH=src python3 -m pytoolcage validate --policy /tmp/pytoolcage-policy.json --tool read_file --arguments-file /tmp/pytoolcage-args.json --json
+          printf 'clean text' | PYTHONPATH=src python3 -m pytoolcage sanitize
+          PYTHONPATH=src python3 -m pytoolcage --version
+      - name: Install build tooling
+        run: python3 -m pip install build
+      - name: Build source and wheel distributions
+        run: python3 -m build
+      - name: Verify distribution contents
+        run: python3 scripts/check_dist.py dist

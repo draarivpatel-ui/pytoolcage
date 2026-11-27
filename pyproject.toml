@@ -1,0 +1,55 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pytoolcage"
+version = "1.0.0"
+description = "Zero-dependency AI-agent and MCP tool-call policy firewall with argument guards, capability budgets, audit logs, and result sanitization"
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "pytoolcage contributors" }]
+keywords = [
+    "ai-agent", "mcp", "model-context-protocol", "tool-call", "security", "firewall",
+    "prompt-injection", "ssrf", "command-injection", "path-traversal", "zero-dependency",
+    "audit-log", "rate-limit", "secret-redaction",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Security",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+dependencies = []
+
+[project.scripts]
+pytoolcage = "pytoolcage.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/draarivpatel-ui/pytoolcage"
+Repository = "https://github.com/draarivpatel-ui/pytoolcage"
+Issues = "https://github.com/draarivpatel-ui/pytoolcage/issues"
+Documentation = "https://github.com/draarivpatel-ui/pytoolcage#readme"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["pytoolcage*"]
+exclude = ["tests*"]
+
+[tool.setuptools.package-data]
+pytoolcage = ["py.typed"]

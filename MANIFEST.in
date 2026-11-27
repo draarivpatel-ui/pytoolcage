@@ -1,0 +1,9 @@
+include README.md
+include LICENSE
+include CHANGELOG.md
+include SECURITY.md
+include CONTRIBUTING.md
+include GOOD_FIRST_ISSUES.md
+recursive-include tests *.py
+recursive-include examples *.py
+recursive-include scripts *.py
