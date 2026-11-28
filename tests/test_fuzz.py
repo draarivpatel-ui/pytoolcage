@@ -6,19 +6,22 @@ import json
 import sys
 import unittest
 
+from contextlib import nullcontext
+
 try:
     import atheris
 except ImportError:
     atheris = None
 
-from pytoolcage import (
-    guard_command,
-    guard_path,
-    guard_url,
-    sanitize_tool_result,
-    stable_stringify,
-    validate_tool_arguments,
-)
+with (atheris.instrument_imports(include=["pytoolcage"]) if atheris is not None else nullcontext()):
+    from pytoolcage import (
+        guard_command,
+        guard_path,
+        guard_url,
+        sanitize_tool_result,
+        stable_stringify,
+        validate_tool_arguments,
+    )
 
 _TOKEN_STRINGS = (
     "",
@@ -140,6 +143,9 @@ def exercise(data: bytes) -> None:
     encoded = json.dumps({"value": text}, ensure_ascii=False)
     if not isinstance(encoded, str):
         raise AssertionError("json encoding invariant failed")
+
+
+exercise = atheris.instrument_func(exercise) if atheris is not None else exercise
 
 
 def _seed_bytes(seed: int, length: int = 72) -> bytes:
